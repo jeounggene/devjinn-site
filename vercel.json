@@ -1,0 +1,8 @@
+# Vercel Deployment Configuration
+
+# This file tells Vercel to use the Vite build output
+type = "static"
+
+[build]
+  command = "npm run build"
+  publish = "dist"
