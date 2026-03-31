@@ -12,10 +12,13 @@ const PROJECTS = [
 
 
 const COMMANDS = [
-  'help', 'ls', 'cd', 'projects', 'clear', 'echo', 'whoami', 'pwd', 'date', 'fortune', 'cowsay', 'neofetch', 'sudo', 'exit', 'matrix'
+  'help', 'ls', 'cd', 'projects', 'clear', 'echo', 'whoami', 'pwd', 'date', 'fortune', 'cowsay', 'neofetch', 'sudo', 'exit', 'matrix', 'donate'
 ];
 
 const EASTER_EGGS = {
+  donate: [
+    `<a href="https://buymeacoffee.com/devjinn" target="_blank" rel="noopener noreferrer">☕ Buy me a coffee</a>`
+  ],
   fortune: [
     'You will deploy a bug-free app today.',
     'The Matrix has you.',
@@ -209,6 +212,8 @@ function App() {
           output = EASTER_EGGS.sudo; break;
         case 'exit':
           output = EASTER_EGGS.exit; break;
+        case 'donate':
+          output = EASTER_EGGS.donate; break;
         case '':
           output = ['']; break;
         default:
