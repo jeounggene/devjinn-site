@@ -1,11 +1,11 @@
 
-
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, useLayoutEffect } from 'react';
 import './App.css';
-
-
+import { getSudoProjectsLines } from './projectBackends.js';
+import { getAdminPassword, isSudoPasswordConfigured } from './adminConfig.js';
 
 const PROMPT = 'guest@devjinn:~$';
+const SUDO_PASSWORD_PROMPT = '[sudo] password for guest:';
 const PROJECTS = [
   { name: 'seechords.fly.dev', url: 'https://seechords.fly.dev/' }
 ];
@@ -27,13 +27,31 @@ const EASTER_EGGS = {
     'Try turning it off and on again.'
   ],
   cowsay: [
-    `<pre>  ________\n< mooo! >\n  --------\n         \   ^__^\n          \  (oo)\\_______\n             (__)\\       )\/\\\n                 ||----w |\n                 ||     ||</pre>`
+    [
+      '<pre>  ________',
+      '< mooo! >',
+      '  --------',
+      '         \\   ^__^',
+      '          \\  (oo)\\_______',
+      '             (__)\\       )/\\\\',
+      '                 ||----w |',
+      '                 ||     ||</pre>',
+    ].join('\n'),
   ],
   neofetch: [
-    `<pre>      .---.        guest@devjinn\n     /     \\      -----------\n     | o_o |      OS: Matrix CRT\n     |:_/  |      Shell: /bin/bash\n    //   \\ \\     Uptime: ∞\n   (|     | )     Projects: 1\n  /'\\_   _/\\'\\    Terminal: CRT.js\n  \___)=(___/     Theme: Green/Black</pre>`
+    [
+      '<pre>      .---.        guest@devjinn',
+      '     /     \\      -----------',
+      '     | o_o |      OS: Matrix CRT',
+      '     |:_/  |      Shell: /bin/bash',
+      '    //   \\ \\     Uptime: ∞',
+      '   (|     | )     Projects: 1',
+      "  /'\\_   _/\\'\\    Terminal: CRT.js",
+      '  \\___)=(___/     Theme: Green/Black</pre>',
+    ].join('\n'),
   ],
   sudo: [
-    'Nice try. You have no power here.'
+    'You are not allowed to access this resource.'
   ],
   exit: [
     'We can never leave the Matrix.'
@@ -54,16 +72,33 @@ function App() {
   const [showCRTOff, setShowCRTOff] = useState(false);
   const [history, setHistory] = useState([]);
   const [historyIdx, setHistoryIdx] = useState(-1);
+  const [sudoPasswordMode, setSudoPasswordMode] = useState(false);
   const inputRef = useRef(null);
+  /** After ArrowUp/Down recall, keep caret at end so typing appends instead of prepending. */
+  const moveCaretToEndAfterHistory = useRef(false);
+
+  useLayoutEffect(() => {
+    if (!moveCaretToEndAfterHistory.current) return;
+    moveCaretToEndAfterHistory.current = false;
+    const el = inputRef.current;
+    if (el) {
+      const len = el.value.length;
+      el.setSelectionRange(len, len);
+    }
+  }, [input]);
 
   useEffect(() => {
     inputRef.current?.focus();
-    const blink = setInterval(() => setShowCursor(c => !c), 900);
+    const blink = setInterval(() => setShowCursor(c => !c), 530);
     return () => clearInterval(blink);
   }, []);
 
   // Autocomplete logic
   useEffect(() => {
+    if (sudoPasswordMode) {
+      setAutocomplete('');
+      return;
+    }
     if (!input) {
       setAutocomplete('');
       return;
@@ -75,6 +110,8 @@ function App() {
       options = ['~', 'projects', '/projects'];
     } else if (cmd === 'projects') {
       options = PROJECTS.map(p => p.name);
+    } else if (cmd === 'sudo') {
+      options = ['projects'];
     } else {
       options = COMMANDS.filter(c => c.startsWith(cmd));
     }
@@ -85,7 +122,7 @@ function App() {
     } else {
       setAutocomplete('');
     }
-  }, [input]);
+  }, [input, sudoPasswordMode]);
 
   function handleInput(e) {
     setInput(e.target.value);
@@ -93,21 +130,31 @@ function App() {
   }
 
   function handleKeyDown(e) {
+    if (sudoPasswordMode && (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'Tab')) {
+      if (e.key === 'Tab') e.preventDefault();
+      return;
+    }
     if (e.key === 'ArrowUp') {
       if (history.length === 0) return;
-      let idx = historyIdx === -1 ? history.length - 1 : Math.max(0, historyIdx - 1);
-      setInput(history[idx]);
+      e.preventDefault();
+      const idx = historyIdx === -1 ? history.length - 1 : Math.max(0, historyIdx - 1);
+      const next = history[idx];
+      moveCaretToEndAfterHistory.current = true;
+      setInput(next);
       setHistoryIdx(idx);
       return;
     }
     if (e.key === 'ArrowDown') {
       if (history.length === 0) return;
-      let idx = historyIdx === -1 ? history.length - 1 : Math.min(history.length - 1, historyIdx + 1);
+      e.preventDefault();
+      const idx = historyIdx === -1 ? history.length - 1 : Math.min(history.length - 1, historyIdx + 1);
       if (idx === history.length - 1) {
         setInput('');
         setHistoryIdx(-1);
       } else {
-        setInput(history[idx]);
+        const next = history[idx];
+        moveCaretToEndAfterHistory.current = true;
+        setInput(next);
         setHistoryIdx(idx);
       }
       return;
@@ -121,6 +168,24 @@ function App() {
       return;
     }
     if (e.key === 'Enter') {
+      if (sudoPasswordMode) {
+        const newLines = [...lines];
+        newLines[newLines.length - 1] = { type: 'prompt', text: '', cwd };
+        const password = input;
+        const output =
+          password === getAdminPassword()
+            ? getSudoProjectsLines()
+            : ['Sorry, try again.'];
+        output.forEach((line) => newLines.push({ type: 'output', text: line }));
+        newLines.push({ type: 'prompt', text: '', cwd });
+        setLines(newLines);
+        setInput('');
+        setSudoPasswordMode(false);
+        setAutocomplete('');
+        setHistoryIdx(-1);
+        return;
+      }
+
       let newLines = [...lines];
       // Save cwd for this prompt
       newLines[newLines.length - 1] = { type: 'prompt', text: input, cwd };
@@ -209,7 +274,17 @@ function App() {
         case 'neofetch':
           output = EASTER_EGGS.neofetch; break;
         case 'sudo':
-          output = EASTER_EGGS.sudo; break;
+          if (args[0] === 'projects') {
+            if (!isSudoPasswordConfigured()) {
+              output = ['sudo: set VITE_ADMIN_PASSWORD in .env.local'];
+            } else {
+              setSudoPasswordMode(true);
+              output = [];
+            }
+          } else {
+            output = EASTER_EGGS.sudo;
+          }
+          break;
         case 'exit':
           output = EASTER_EGGS.exit; break;
         case 'donate':
@@ -243,16 +318,22 @@ function App() {
         {lines.map((line, idx) => (
           line.type === 'prompt' ? (
             <div className="terminal-line" key={idx}>
-              <span className="prompt">{PROMPT.replace('~', line.cwd || '~')} </span>
+              <span className="prompt">
+                {idx === lines.length - 1 && sudoPasswordMode
+                  ? `${SUDO_PASSWORD_PROMPT} `
+                  : `${PROMPT.replace('~', line.cwd || '~')} `}
+              </span>
               {idx === lines.length - 1 ? (
                 <span style={{display:'inline-flex',alignItems:'center',position:'relative'}}>
                   <input
                     ref={inputRef}
                     className="terminal-input"
+                    type={sudoPasswordMode ? 'password' : 'text'}
                     value={input}
                     onChange={handleInput}
                     onKeyDown={handleKeyDown}
                     autoFocus
+                    autoComplete="off"
                     spellCheck={false}
                     style={{background:'transparent',border:'none',color:'inherit',font:'inherit',outline:'none',zIndex:2,width: input.length === 0 ? '1ch' : `${input.length}ch`}}
                   />

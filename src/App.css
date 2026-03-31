@@ -189,7 +189,7 @@ body, html {
   background: #00ff41;
   margin-left: 2px;
   vertical-align: middle;
-  animation: blink-rect 1.8s steps(1) infinite;
+  animation: blink-rect 1.05s steps(1) infinite;
   border-radius: 2px;
   box-shadow: 0 0 4px #00ff41cc;
   opacity: 1;
