@@ -1,8 +1,7 @@
 /** Backend dashboards — only shown for `sudo projects` (not public `projects` / `ls`). */
 export const SEECHORDS_BACKEND_LINKS = [
-  { name: 'Fly · seechords-worker', url: 'https://fly.io/apps/seechords-worker' },
-  { name: 'Fly · seechords', url: 'https://fly.io/apps/seechords' },
-  { name: 'Turso · seechords', url: 'https://app.turso.tech/jeounggene/databases/seechords' },
+  { name: 'Fly', url: 'https://fly.io/dashboard' },
+  { name: 'Turso', url: 'https://app.turso.tech/' },
 ];
 
 function seechordsBackendHtmlLines() {
