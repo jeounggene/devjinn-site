@@ -11,7 +11,7 @@ function seechordsBackendHtmlLines() {
   );
 }
 
-/** Lines for `sudo projects` (HTML). */
+/** Lines for `sudo projects` (HTML body lines after header). */
 export function getSudoProjectsLines() {
-  return ['seechords — backend', '', 'Backend:', ...seechordsBackendHtmlLines()];
+  return ['seechords - backend:', ...seechordsBackendHtmlLines()];
 }
